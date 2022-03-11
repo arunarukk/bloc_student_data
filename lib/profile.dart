@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:get/get_core/src/get_main.dart';
+import 'package:get/get_navigation/get_navigation.dart';
 import 'package:sqfligth_students/db/functions/db_functions.dart';
 import 'package:sqfligth_students/screen_home.dart';
 import 'package:sqfligth_students/widget/add_student.dart';
@@ -29,9 +31,7 @@ class ProfileStudent extends StatelessWidget {
                   child: CircleAvatar(
                     radius: 100, backgroundColor: Colors.red,
                     backgroundImage: Image.file(File(data.image)).image,
-                    // NetworkImage(
-                    //     "https://pbs.twimg.com/profile_images/1249495650623881217/cL8fqMEW_400x400.jpg"),
-                  ),
+                   ),
                 ),
                 SizedBox(
                   height: 50.0,
@@ -78,12 +78,8 @@ class ProfileStudent extends StatelessWidget {
                 ),
                 ElevatedButton.icon(
                     onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AddStudent(data: data),
-                        ),
-                      );
+                     
+                      Get.off(AddStudent(data: data));
                     },
                     icon: Icon(Icons.edit),
                     label: Text('Edit'))

@@ -1,92 +1,115 @@
 import 'package:flutter/cupertino.dart';
+import 'package:get/get.dart';
 
 import 'package:sqfligth_students/db/model/data_model.dart';
 import 'package:sqflite/sqflite.dart';
 
-ValueNotifier<List<StudentModel>> studentListNotifier = ValueNotifier([]);
-late Database _db;
-Future<void> initializeDataBase() async {
-  _db = await openDatabase(
-    'student.db',
-    version: 1,
-    onCreate: (Database db, int version) async {
-      await db.execute(
-          'CREATE TABLE student (id INTEGER PRIMARY KEY, name TEXT, age TEXT,clas TEXT,roll TEXT,image TEXT)');
-    },
-  );
-}
+class Controller extends GetxController {
+  List<StudentModel> studentListNotifier = <StudentModel>[].obs;
 
-Future<StudentModel> addStudent(StudentModel value) async {
-  // print({value.age, value.clas, value.name, value.roll});
-  // final studentDB = await Hive.openBox<StudentModel>('student_db');
-  // final _id = await studentDB.add(value);
-  // value.id = _id;
+  List<Map<String, dynamic>> _students = <Map<String, dynamic>>[].obs;
+  List<Map<String, dynamic>> searchItems = <Map<String, dynamic>>[].obs;
 
-  await _db.rawInsert(
-      'INSERT INTO student (name,age,clas,roll,image) VALUES (?,?,?,?,?)',
-      [value.name, value.age, value.clas, value.roll, value.image]);
-      
-  getAllStudents();
-  //studentListNotifier.value.add(value);
-  // print({value.id, value.name});
-  studentListNotifier.notifyListeners();
-  return value;
-}
+  String? text;
 
-Future<dynamic> getAllStudents() async {
-  // final studentDB = await Hive.openBox<StudentModel>('student_db');
+  late Database _db;
 
-  final _values = await _db.rawQuery('SELECT * FROM student');
-  //print(_values);
-  studentListNotifier.value.clear();
+  Future<void> initializeDataBase() async {
+    _db = await openDatabase(
+      'student.db',
+      version: 1,
+      onCreate: (Database db, int version) async {
+        await db.execute(
+            'CREATE TABLE student (id INTEGER PRIMARY KEY, name TEXT, age TEXT,clas TEXT,roll TEXT,image TEXT)');
+      },
+    );
+  }
 
-  _values.forEach((map) {
-    final student = StudentModel.fromMap(map);
-    studentListNotifier.value.add(student);
-    studentListNotifier.notifyListeners();
-  });
-  return _values;
-  //studentListNotifier.value.addAll(studentDB.values);
-}
+  Future<StudentModel> addStudent(StudentModel value) async {
+    await _db.rawInsert(
+        'INSERT INTO student (name,age,clas,roll,image) VALUES (?,?,?,?,?)',
+        [value.name, value.age, value.clas, value.roll, value.image]);
 
-Future<void> deleteStudent(int id) async {
-  // final studentDB = await Hive.openBox<StudentModel>('student_db');
-  // await studentDB.delete(id);
-  await _db.rawDelete('DELETE FROM student WHERE id = ?', [id]);
-  //await _db.close();
-  getAllStudents();
-  
-}
+    getAllStudents();
 
-Future<void> editStudent(int id, String name, String age, String clas,
-    String roll, String image) async {
-  // final studentDB = await Hive.openBox<StudentModel>('student_db');
-  //await studentDB.delete(id);
-  print('edit');
-  final data = {
-    'name': name,
-    'age': age,
-    'clas': clas,
-    'roll': roll,
-    'image': image,
-  };
-  final result =
-      await _db.update("student", data, where: "id = ?", whereArgs: [id]);
-  // await _db.rawUpdate(
-  //     'UPDATE student SET name = ?, age = ?,clas = ?,roll=?,image = ? WHERE id=?',
-  //     [name, age, clas, roll, image]);
+    return value;
+  }
 
-  studentListNotifier.notifyListeners();
-  //await _db.close();
-  getAllStudents();
-}
+  Future<dynamic> getAllStudents() async {
+    final _values = await _db.rawQuery('SELECT * FROM student');
 
-searchStudent(String text) async {
-  final _values = await _db.rawQuery('SELECT * FROM student');
-  print(text);
+    _values.forEach((map) {
+      final student = StudentModel.fromMap(map);
+      studentListNotifier.add(student);
+    });
+    return _values;
+  }
 
-  List<Map> res =
-      await _db.query("student", where: "name LIKE ?", whereArgs: ['%$text%']);
-  print(res);
-  return res;
+  Future<void> deleteStudent(int id) async {
+    await _db.rawDelete('DELETE FROM student WHERE id = ?', [id]);
+
+    refreshStudents();
+
+    getAllStudents();
+    update();
+  }
+
+  Future<void> editStudent(int id, String name, String age, String clas,
+      String roll, String image) async {
+    print('edit');
+    final data = {
+      'name': name,
+      'age': age,
+      'clas': clas,
+      'roll': roll,
+      'image': image,
+    };
+    final result =
+        await _db.update("student", data, where: "id = ?", whereArgs: [id]);
+
+    getAllStudents();
+  }
+
+  void refreshStudents() async {
+    try {
+      final h = getAllStudents().then((value) {
+        _students.clear();
+        _students.addAll(value);
+        searchItems.clear();
+        searchItems.addAll(value);
+        update();
+      });
+    } on Exception catch (e) {
+      print(e);
+    }
+  }
+
+  void filterSearch(String query) async {
+    List<Map<String, dynamic>> studentList = _students;
+
+    if (query.isNotEmpty) {
+      List<Map<String, dynamic>> studentData = [];
+      searchItems.clear();
+      for (var item in studentList) {
+        var student = StudentModel.fromMap(item);
+        print('-------------------${student}');
+        if (student.name.toLowerCase().contains(query.toLowerCase())) {
+          studentData.add(item);
+          print('----------${studentData}');
+        }
+        searchItems.clear();
+        searchItems.addAll(studentData);
+        update();
+        print('----------${searchItems}');
+      }
+
+      return;
+    } else {
+      searchItems.clear();
+      searchItems.addAll(_students);
+      update();
+
+      refreshStudents();
+    }
+  }
 }
